@@ -16,7 +16,9 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
+from apps.fireapp import views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('sample-data/', views.display_sample_data, name='sample_data'),
 ]
