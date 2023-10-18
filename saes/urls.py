@@ -20,5 +20,5 @@ from apps.fireapp import views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('sample-data/', views.display_sample_data, name='sample_data'),
+    path('fireapp/', views.index, name='fireapp/index'),
 ]
