@@ -17,14 +17,10 @@ ref = db.reference('Data')
 
 # Create your views here.
 
-def index(request):
-    name = ref.child('Name').get()
-    stack = ref.child('Stack').get()
-    framework = ref.child('Framework').get()
+def home(request):
 
-    context = {
-        'name':name,
-        'stack':stack,
-        'framework':framework
-        }
-    return render(request, 'fireapp/index.html', context)
+    return render(request, 'landing/home.html')
+
+def login(request):
+    
+    return render(request, 'landing/login.html')
