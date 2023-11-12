@@ -17,10 +17,14 @@ ref = db.reference('Data')
 
 # Create your views here.
 
-def home(request):
+def landing(request):
 
     return render(request, 'landing/home.html')
 
 def login(request):
     
     return render(request, 'landing/login.html')
+
+def register(request):
+    
+    return render(request, 'landing/register.html')
