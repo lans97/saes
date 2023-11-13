@@ -3,5 +3,17 @@
 {% block content %}
 
 <h1>Home page</h1>
+<h2>Welcome, {{ user.username }}!</h2>
+
+<form method="post" action="{% url 'logout' %}">
+    {% csrf_token %}
+    <button type="submit">Logout</button>
+  </form>
+
+<script>
+    document.querySelector('form').addEventListener('submit', function() {
+      localStorage.setItem('logoutRedirect', '{% url 'landing-home' %}');
+    });
+  </script>
 
 {% endblock %}

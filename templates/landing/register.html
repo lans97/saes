@@ -10,28 +10,32 @@
         <div class="text-center">
             <h1>Register</h1>
         </div>
-        <form>
-            <!-- Email input -->
+        <form method="post">
+            {% csrf_token %}
+
             <div class="form-outline mb-4">
-                <input type="email" id="email" class="form-control" />
-                <label class="form-label" for="email">Email address</label>
+                {{ form.username }}
+                <label for="{{ form.username.id_for_label }}" class="form-label">Username</label>
             </div>
 
-            <!-- Password input -->
             <div class="form-outline mb-4">
-                <input type="password" id="password" class="form-control" />
-                <label class="form-label" for="password">Password</label>
+                {{ form.email }}
+                <label for="{{ form.email.id_for_label }}" class="form-label">Email</label>
             </div>
 
-            <!-- Confirm Password input -->
             <div class="form-outline mb-4">
-                <input type="password" id="confirm-password" class="form-control" />
-                <label class="form-label" for="confirm-password">Confirm Password</label>
+                {{ form.password1 }}
+                <label for="{{ form.password1.id_for_label }}" class="form-label">Password</label>
+            </div>
+
+            <div class="form-outline mb-4">
+                {{ form.password2 }}
+                <label for="{{ form.password2.id_for_label }}" class="form-label">Confirm Password</label>
             </div>
 
             <!-- Submit button -->
             <div class="text-center">
-                <button type="button" class="btn btn-primary btn-block mb-4">Sign Up</button>
+                <button type="submit" class="btn btn-primary btn-block mb-4">Sign Up</button>
 
                 <!-- Alt Sign up buttons -->
                 <p>or sign up with:</p>

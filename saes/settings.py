@@ -80,6 +80,8 @@ TEMPLATES = [
     },
 ]
 
+LOGIN_REDIRECT_URL = 'home'
+
 WSGI_APPLICATION = 'saes.wsgi.application'
 
 
