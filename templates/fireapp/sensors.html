@@ -1,0 +1,25 @@
+{% extends 'fireapp/base.html' %}
+
+{% block content %}
+
+<h1> User Sensors Page </h1>
+<h2> User: {{ user.username }} </h2>
+
+<form method="post">
+    {% csrf_token %}
+    <ul>
+        {% for sensor in user.sensor_set.all %}
+        <li>
+            ID: {{ sensor.sensor_id }} <br>
+            Name: {{ sensor.name }} <br>
+            Description: {{ sensor.description }} <br>
+            <a formnovalidate name="dashboard" class="btn btn-secondary" href="{% url 'dashboard' sensor_id=sensor.sensor_id %}">Dashboard</a>
+            <button formnovalidate name="delete" value="{{ sensor.sensor_id }}" class="btn btn-danger">Delete</button>
+        </li>
+        {% endfor %}
+    </ul>
+</form>
+
+<a type="button" class="btn btn-primary" href="{% url 'add-sensor' %}"> Add New </a>
+
+{% endblock content %}
