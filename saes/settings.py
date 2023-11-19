@@ -14,12 +14,20 @@ from pathlib import Path
 from os.path import abspath, basename, dirname, join, normpath
 import sys
 
+import firebase_admin
+from firebase_admin import credentials
+
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 PROJECT_TEMPLATES = [
     join(BASE_DIR, 'templates'),
 ]
+
+# Firebase Init
+cred = credentials.Certificate(join(BASE_DIR, "secrets/key.json"))
+firebase_admin.initialize_app(cred, {'databaseURL': "https://saes-dde36-default-rtdb.firebaseio.com/"})
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.2/howto/static-files/

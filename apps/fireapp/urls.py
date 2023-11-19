@@ -12,5 +12,4 @@ urlpatterns = [
     path("sensors/", views.sensors_view, name="sensors"),
     path("add-sensor/", views.add_sensor_view, name="add-sensor"),
     path("dashboard/<str:sensor_id>/", views.dashboard_view, name="dashboard"),
-    path("example/", views.plot_ex, name="example"),
 ]

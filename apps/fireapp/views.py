@@ -12,9 +12,14 @@ import base64
 from firebase_admin import db
 
 def landing(request):
+    if request.user.is_authenticated:
+        return redirect('home')
+
     return render(request, 'landing/home.html')
 
 def login_view(request):
+    if request.user.is_authenticated:
+        return redirect('home')
     if request.method == 'POST':
         form = AuthenticationForm(request, request.POST)
         if form.is_valid():
@@ -29,6 +34,8 @@ def login_view(request):
     return render(request, 'landing/login.html', { 'form': form })
 
 def register(request):
+    if request.user.is_authenticated:
+        return redirect('home')
     if request.method == 'POST':
         form = SignUpForm(request.POST)
         if form.is_valid():
@@ -81,27 +88,26 @@ def add_sensor_view(request):
 
 @login_required
 def dashboard_view(request, sensor_id):
-    ref = db.reference('/')
-    ref.set(value)
+    ref = db.reference('/sensors/' + sensor_id + "/data")
     context = {}
     context['sensor_id'] = sensor_id
-    return render(request, 'fireapp/dashboard.html', context)
 
-def logout_view(request):
-    logout(request)
-    next_url = request.POST.get('next') or request.GET.get('next') or 'landing-home'
-    return redirect(next_url)
+    current_var = "temp"
+    if request.method == 'POST':
+        current_var = request.POST.get('setvar')
 
-def plot_ex(request):
-    # Your data for the plot
-    x = [1, 2, 3, 4, 5]
-    y = [10, 20, 15, 25, 30]
+    sensor_data = ref.order_by_child("time").get()
 
+    tiempo = [meassure["time"] for meassure in sensor_data]
+    vardata = [meassure[current_var] for meassure in sensor_data]
+
+    sensor_vars = list(sensor_data[0].keys())
+    context['vars_list'] = sensor_vars
+    
     # Create the plot
-    plt.plot(x, y)
-    plt.xlabel('X-axis label')
-    plt.ylabel('Y-axis label')
-    plt.title('My Plot')
+    plt.plot(tiempo, vardata, 'k.')
+    plt.xlabel('time')
+    plt.ylabel(current_var)
 
     # Save the plot to a BytesIO object
     image_stream = BytesIO()
@@ -113,5 +119,12 @@ def plot_ex(request):
     image_base64 = base64.b64encode(image_stream.getvalue()).decode('utf-8')
 
     # Pass the base64 string to the template
-    context = {'image_base64': image_base64}
-    return render(request, 'fireapp/example.html', context)
+    context['image_base64'] = image_base64
+
+    return render(request, 'fireapp/dashboard.html', context)
+
+def logout_view(request):
+    logout(request)
+    next_url = request.POST.get('next') or request.GET.get('next') or 'landing-home'
+    return redirect(next_url)
+
