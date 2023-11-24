@@ -5,9 +5,10 @@ from django.contrib.auth.decorators import login_required
 from .models import Sensor
 from .forms import SignUpForm, SensorForm
 
-import matplotlib.pyplot as plt
-from io import BytesIO
-import base64
+import plotly.express as px
+from django.http import JsonResponse
+import pandas as pd
+from datetime import datetime
 
 from firebase_admin import db
 
@@ -92,34 +93,33 @@ def dashboard_view(request, sensor_id):
     context = {}
     context['sensor_id'] = sensor_id
 
-    current_var = "temp"
+    options = {"Humedad": 'hum', "Intensidad Luminosa": 'luz', "Sonido": 'sonido', "Temperatura": 'temp', "Ubicación": 'loc'}
+    units = {"Humedad": '[]', "Intensidad Luminosa": '[]', "Sonido": '[dB]', "Temperatura": '[°C]', "Ubicación": ''}
+    current_var = options["Temperatura"]
     if request.method == 'POST':
-        current_var = request.POST.get('setvar')
+        current_key = request.POST.get('setvar')
+        current_var = options[current_key]
 
-    sensor_data = ref.order_by_child("time").get()
+    sensor_data = ref.get()
 
-    tiempo = [meassure["time"] for meassure in sensor_data]
-    vardata = [meassure[current_var] for meassure in sensor_data]
+    if current_var == "loc":
+        df = pd.DataFrame(sensor_data)
+        fig = px.scatter_geo(df, lat='lat', lon='lng', title='Sensor Map', projection='natural earth')
 
-    sensor_vars = list(sensor_data[0].keys())
-    context['vars_list'] = sensor_vars
-    
-    # Create the plot
-    plt.plot(tiempo, vardata, 'k.')
-    plt.xlabel('time')
-    plt.ylabel(current_var)
+    else:
+        tiempo = [datetime(2000, 1, 1, entry['hora'], entry['minuto'], entry['segundo']) for entry in sensor_data]
+        df = pd.DataFrame({'Tiempo': tiempo, current_key+" "+units[current_key]: [entry[current_var] for entry in sensor_data]})
 
-    # Save the plot to a BytesIO object
-    image_stream = BytesIO()
-    plt.savefig(image_stream, format='png')
-    image_stream.seek(0)
-    plt.close()
 
-    # Convert the BytesIO object to a base64-encoded string
-    image_base64 = base64.b64encode(image_stream.getvalue()).decode('utf-8')
 
-    # Pass the base64 string to the template
-    context['image_base64'] = image_base64
+        # Plotly
+        fig = px.scatter(df, x='Tiempo', y=current_key+" "+units[current_key], title=sensor_id)
+
+    context['vars_list'] = list(options.keys())
+
+
+    plot_json = fig.to_json()
+    context['plot_json'] = plot_json
 
     return render(request, 'fireapp/dashboard.html', context)
 

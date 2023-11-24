@@ -1,12 +1,16 @@
 {% extends 'fireapp/base.html' %}
 
+{% block cdnIncludes %}
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+<script src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY&callback=initMap" async defer></script>
+{% endblock %}
+
 {% block content %}
 
 <h1> Dashboard </h1>
 <p> Sensor_ID: {{ sensor_id }} </p>
-<div class="col">
-    <img src="data:image/png;base64,{{ image_base64 }}" class="img-fluid" alt="My Plot" style="min-width: 400px;">
-</div>
+
+<div id="plot-container" style="width: 100%; height: 500px;"></div>
 <div class="col">
     <div class="d-flex flex-column flex-shrink-0 p-3" style="width: 280px;">
         <button class="btn btn-light" type="button" data-bs-toggle="collapse" data-bs-target="#sideBarContent" aria-controls="sideBarContent" aria-expanded="false" aria-label="Toggle sidebar">
@@ -28,8 +32,11 @@
     </div>
 </div>
 <div class="col">
-
-
 </div>
+
+<script>
+    const plotJson = {{ plot_json|safe }};
+    Plotly.newPlot('plot-container', plotJson.data, plotJson.layout);
+</script>
 
 {% endblock content %}
