@@ -96,6 +96,7 @@ def dashboard_view(request, sensor_id):
     options = {"Humedad": 'hum', "Intensidad Luminosa": 'luz', "Sonido": 'sonido', "Temperatura": 'temp', "Ubicación": 'loc'}
     units = {"Humedad": '[]', "Intensidad Luminosa": '[]', "Sonido": '[dB]', "Temperatura": '[°C]', "Ubicación": ''}
     current_var = options["Temperatura"]
+    current_key = "Temperatura"
     if request.method == 'POST':
         current_key = request.POST.get('setvar')
         current_var = options[current_key]
