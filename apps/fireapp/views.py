@@ -8,7 +8,7 @@ from .forms import SignUpForm, SensorForm
 import plotly.express as px
 from django.http import JsonResponse
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from firebase_admin import db
 
@@ -97,21 +97,40 @@ def dashboard_view(request, sensor_id):
     units = {"Humedad": '[]', "Intensidad Luminosa": '[]', "Sonido": '[dB]', "Temperatura": '[°C]', "Ubicación": ''}
     current_var = options["Temperatura"]
     current_key = "Temperatura"
-    if request.method == 'POST':
-        current_key = request.POST.get('setvar')
-        current_var = options[current_key]
+    timeend = datetime.now()
+    timestart = timeend - timedelta(days=1)
 
-    sensor_data = ref.get()
+    if request.method == 'POST':
+        if 'setvar' in request.POST:
+            current_key = request.POST.get('setvar')
+            current_var = options[current_key]
+        elif 'update' in request.POST:
+            startd = datetime.strptime(request.POST.get('start_date'), "%Y-%m-%d").date()
+            endd = datetime.strptime(request.POST.get('end_date'), "%Y-%m-%d").date()
+            startt = datetime.strptime(request.POST.get('start_time'), "%H:%M").time()
+            endt = datetime.strptime(request.POST.get('end_time'), "%H:%M").time()
+            timestart = datetime.combine(startd, startt)
+            timeend = datetime.combine(endd, endt)
+
+    context['startd'] = timestart.strftime("%Y-%m-%d")
+    context['startt'] = timestart.strftime("%H:%M")
+    context['endd'] = timeend.strftime("%Y-%m-%d")
+    context['endt'] = timeend.strftime("%H:%M")
+    
+    timestart = timestart.strftime("%Y%m%d%H%M%S")
+    timeend = timeend.strftime("%Y%m%d%H%M%S")
+    
+    query = ref.order_by_key().start_at(timestart).end_at(timeend)
+    sensor_data = query.get()
+    sensor_data = [sensor_data[k] for k in sensor_data.keys()]
 
     if current_var == "loc":
         df = pd.DataFrame(sensor_data)
-        fig = px.scatter_geo(df, lat='lat', lon='lng', title='Sensor Map', projection='natural earth')
+        fig = px.scatter_geo(df, lat='lat', lon='lng', hover_name='tiempo', title='Sensor Map', projection='natural earth')
 
     else:
-        tiempo = [datetime(2000, 1, 1, entry['hora'], entry['minuto'], entry['segundo']) for entry in sensor_data]
+        tiempo = [datetime.strptime(entry['fecha'] + entry['tiempo'], "%d/%m/%Y%H:%M:%S") for entry in sensor_data]
         df = pd.DataFrame({'Tiempo': tiempo, current_key+" "+units[current_key]: [entry[current_var] for entry in sensor_data]})
-
-
 
         # Plotly
         fig = px.scatter(df, x='Tiempo', y=current_key+" "+units[current_key], title=sensor_id)

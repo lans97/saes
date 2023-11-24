@@ -2,7 +2,15 @@
 
 {% block cdnIncludes %}
 <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
-<script src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY&callback=initMap" async defer></script>
+<script src="https://code.jquery.com/jquery-3.7.1.slim.js" integrity="sha256-UgvvN8vBkgO0luPSUl2s8TIlOSYRoGFAX4jlCIm9Adc=" crossorigin="anonymous"></script>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.10.0/css/bootstrap-datepicker.min.css" integrity="sha512-34s5cpvaNG3BknEWSuOncX28vz97bRI59UnVtEEpFX536A7BtZSJHsDyFoCl8S7Dt2TPzcrCEoHBGeM4SUBDBw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-timepicker/0.5.2/css/bootstrap-timepicker.min.css" integrity="sha512-/Ae8qSd9X8ajHk6Zty0m8yfnKJPlelk42HTJjOHDWs1Tjr41RfsSkceZ/8yyJGLkxALGMIYd5L2oGemy/x1PLg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.10.0/js/bootstrap-datepicker.min.js" integrity="sha512-LsnSViqQyaXpD4mBBdRYeP6sRwJiJveh2ZIbW41EBrNmKxgr/LFZIiWT6yr+nycvhvauz8c2nYMhrP80YhG7Cw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-timepicker/0.5.2/js/bootstrap-timepicker.min.js" integrity="sha512-2xXe2z/uA+2SyT/sTSt9Uq4jDKsT0lV4evd3eoE/oxKih8DSAsOF6LUb+ncafMJPAimWAXdu9W+yMXGrCVOzQA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 {% endblock %}
 
 {% block content %}
@@ -10,33 +18,101 @@
 <h1> Dashboard </h1>
 <p> Sensor_ID: {{ sensor_id }} </p>
 
-<div id="plot-container" style="width: 100%; height: 500px;"></div>
-<div class="col">
-    <div class="d-flex flex-column flex-shrink-0 p-3" style="width: 280px;">
-        <button class="btn btn-light" type="button" data-bs-toggle="collapse" data-bs-target="#sideBarContent" aria-controls="sideBarContent" aria-expanded="false" aria-label="Toggle sidebar">
-            Variables
-        </button>
-        <div class="collapse" id="sideBarContent">
-            <hr>
-            <form method='post'>
-                {% csrf_token %}
-                <ul class="nav nav-pills flex-column">
-                    {% for var in vars_list %}
-                    <li class="nav-item">
-                        <button formnovalidate class="nav-link" name="setvar" value="{{ var }}">{{ var }}</button>
-                    </li>
-                    {% endfor %}
-                </ul>
-            </form>
+<form method='post'>
+    {% csrf_token %}
+    <div class="row">
+        <div class="col-md-6">
+            <div class="form-group">
+                <label for="start_date">Start Date:</label>
+                <input type="text" class="form-control" name="start_date" id="start_date" value="{{ startd }}">
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="form-group">
+                <label for="end_date">End Date:</label>
+                <input type="text" class="form-control" name="end_date" id="end_date" value="{{ endd }}">
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="form-group">
+                <label for="start_time">Start Time:</label>
+                <div class="input-group bootstrap-timepicker timepicker">
+                    <input type="text" class="form-control input-small" name="start_time" id="start_time" value="{{ startt }}">
+                    <span class="input-group-addon"><i class="fas fa-clock"></i></span>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="form-group">
+                <label for="end_time">End Time:</label>
+                <div class="input-group bootstrap-timepicker timepicker">
+                    <input type="text" class="form-control input-small" name="end_time" id="end_time" value="{{ endt }}">
+                    <span class="input-group-addon"><i class="fas fa-clock"></i></span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <button formnovalidate class="btn btn-primary" name="update">Update</button>
+</form>
+
+<div class="row">
+    <div class="col">
+        <div id="plot-container" style="width: 100%; height: 500px;"></div>
+    </div>
+    <div class="col-auto">
+        <div class="d-flex flex-column flex-shrink-0 p-3" style="width: 280px;">
+            <button class="btn btn-light" type="button" data-bs-toggle="collapse" data-bs-target="#sideBarContent" aria-controls="sideBarContent" aria-expanded="false" aria-label="Toggle sidebar">
+                Variables
+            </button>
+            <div class="collapse" id="sideBarContent">
+                <hr>
+                <form method='post'>
+                    {% csrf_token %}
+                    <ul class="nav nav-pills flex-column">
+                        {% for var in vars_list %}
+                        <li class="nav-item">
+                            <button formnovalidate class="nav-link" name="setvar" value="{{ var }}">{{ var }}</button>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </form>
+            </div>
         </div>
     </div>
 </div>
-<div class="col">
 </div>
 
 <script>
     const plotJson = {{ plot_json|safe }};
     Plotly.newPlot('plot-container', plotJson.data, plotJson.layout);
+
+    $(document).ready(function () {
+        $('#start_date').datepicker({
+            format: 'yyyy-mm-dd',
+            autoclose: true
+        });
+
+        $('#end_date').datepicker({
+            format: 'yyyy-mm-dd',
+            autoclose: true
+        });
+
+        $('#start_time').timepicker({
+            showMeridian: false,
+            defaultTime: false
+        });
+
+        $('#end_time').timepicker({
+            showMeridian: false,
+            defaultTime: false
+        });
+    });
 </script>
+
 
 {% endblock content %}
