@@ -1,4 +1,5 @@
 from django.shortcuts import render, redirect
+from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth.decorators import login_required
@@ -89,17 +90,22 @@ def add_sensor_view(request):
 
 @login_required
 def dashboard_view(request, sensor_id):
-    ref = db.reference('/sensors/' + sensor_id + "/data")
+    ref = db.reference("/sensors/" + sensor_id + "/data")
     context = {}
     context['sensor_id'] = sensor_id
 
     options = {"Humedad": 'hum', "Intensidad Luminosa": 'luz', "Sonido": 'sonido', "Temperatura": 'temp', "Ubicación": 'loc'}
     units = {"Humedad": '[]', "Intensidad Luminosa": '[]', "Sonido": '[dB]', "Temperatura": '[°C]', "Ubicación": ''}
+
     current_var = options["Temperatura"]
     current_key = "Temperatura"
-    timeend = datetime.now()
-    timestart = timeend - timedelta(days=1)
 
+    timestart_str = request.session.get('start_time', datetime.now().strftime("%Y%m%d%H%M%S"))
+    timeend_str = request.session.get('end_time', datetime.now().strftime("%Y%m%d%H%M%S"))
+
+    timestart = datetime.strptime(timestart_str, "%Y%m%d%H%M%S")
+    timeend = datetime.strptime(timeend_str, "%Y%m%d%H%M%S")
+    
     if request.method == 'POST':
         if 'setvar' in request.POST:
             current_key = request.POST.get('setvar')
@@ -112,11 +118,14 @@ def dashboard_view(request, sensor_id):
             timestart = datetime.combine(startd, startt)
             timeend = datetime.combine(endd, endt)
 
+            request.session['start_time'] = timestart.strftime("%Y%m%d%H%M%S")
+            request.session['end_time'] = timeend.strftime("%Y%m%d%H%M%S")
+
     context['startd'] = timestart.strftime("%Y-%m-%d")
     context['startt'] = timestart.strftime("%H:%M")
     context['endd'] = timeend.strftime("%Y-%m-%d")
     context['endt'] = timeend.strftime("%H:%M")
-    
+
     timestart = timestart.strftime("%Y%m%d%H%M%S")
     timeend = timeend.strftime("%Y%m%d%H%M%S")
     
