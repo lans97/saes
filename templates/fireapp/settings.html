@@ -5,4 +5,8 @@
 <h1> Settings Page </h1>
 <h2> User: {{ user.username }} </h2>
 
+<a href="{% url "password_change" %}">
+    <button type="button" class="btn btn-primary">Change password</button>
+</a>
+
 {% endblock content %}

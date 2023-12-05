@@ -27,7 +27,7 @@
                 <input type="text" class="form-control" name="start_date" id="start_date" value="{{ startd }}">
             </div>
         </div>
-
+        
         <div class="col-md-6">
             <div class="form-group">
                 <label for="end_date">End Date:</label>
@@ -35,7 +35,7 @@
             </div>
         </div>
     </div>
-
+    
     <div class="row">
         <div class="col-md-6">
             <div class="form-group">
@@ -46,7 +46,7 @@
                 </div>
             </div>
         </div>
-
+        
         <div class="col-md-6">
             <div class="form-group">
                 <label for="end_time">End Time:</label>
@@ -57,12 +57,16 @@
             </div>
         </div>
     </div>
-    <button formnovalidate class="btn btn-primary" name="update">Update</button>
+    <button formnovalidate class="btn btn-primary mt-3" name="update">Update</button>
 </form>
 
 <div class="row">
     <div class="col">
+        {% if sensor_status == "True" %}
         <div id="plot-container" style="width: 100%; height: 500px;"></div>
+        {% else %}
+        <p>No data retreived</p>
+        {% endif %}
     </div>
     <div class="col-auto">
         <div class="d-flex flex-column flex-shrink-0 p-3" style="width: 280px;">
@@ -73,40 +77,53 @@
                 <hr>
                 <form method='post'>
                     {% csrf_token %}
-                    <ul class="nav nav-pills flex-column">
+                    <div class="form-group">
                         {% for var in vars_list %}
-                        <li class="nav-item">
-                            <button formnovalidate class="nav-link" name="setvar" value="{{ var }}">{{ var }}</button>
-                        </li>
+                        <div class="form-check">
+                            {% if var != "Ubicación" %}
+                            <input class="form-check-input" type="checkbox" name="plot-var" value="{{ var }}" id="plot-var{{ forloop.counter }}"
+                            {% if var in sel_vars %}checked{% endif %}>
+                            <label class="form-check-label" for="plot-var{{ forloop.counter }}">{{ var }}</label>
+                            {% endif %}
+                        </div>
                         {% endfor %}
-                    </ul>
+                    </div>
+                    <button formnovalidate class="nav-link" name="map" value="Ubicación">Ubicación</button>
+                    <button type="Submit" class="btn btn-primary">Submit</button>
                 </form>
             </div>
         </div>
     </div>
+    <div class="text-center">
+    <a href="{% url 'download' %}" download="downloaded_data.csv">
+        <button type="button" class="btn btn-primary">Download</button>
+    </a>
+</div>
 </div>
 </div>
 
 <script>
+    {% if sensor_status == "True" %}
     const plotJson = {{ plot_json|safe }};
     Plotly.newPlot('plot-container', plotJson.data, plotJson.layout);
-
+    {% endif %}
+    
     $(document).ready(function () {
         $('#start_date').datepicker({
             format: 'yyyy-mm-dd',
             autoclose: true
         });
-
+        
         $('#end_date').datepicker({
             format: 'yyyy-mm-dd',
             autoclose: true
         });
-
+        
         $('#start_time').timepicker({
             showMeridian: false,
             defaultTime: false
         });
-
+        
         $('#end_time').timepicker({
             showMeridian: false,
             defaultTime: false

@@ -7,7 +7,7 @@ from .models import Sensor
 from .forms import SignUpForm, SensorForm
 
 import plotly.express as px
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
 import pandas as pd
 from datetime import datetime, timedelta
 
@@ -57,6 +57,7 @@ def profile_view(request):
 
 @login_required
 def settings_view(request):
+    
     return render(request, 'fireapp/settings.html')
 
 @login_required
@@ -76,16 +77,32 @@ def sensors_view(request):
 
 @login_required
 def add_sensor_view(request):
+    ref = db.reference("/sensors")
+    currentUser = request.user
+    saes_log=""
+    saes_err=""
+
     if request.method == 'POST':
         form = SensorForm(request.POST)
         if form.is_valid():
             sensor = form.save(commit=False)
-            sensor.user = request.user
-            sensor.save()
+
+            sensor_online = ref.get(str(sensor.sensor_id))
+            if ref.get(str(sensor.sensor_id)) is None:
+                saes_err = "Sensor ID not found"
+            else:
+                if sensor_online.get('user') != currentUser:
+                    saes_err = "Sensor User does not match"
+                else:
+                    sensor.user = request.user
+                    sensor.save()
+                    saes_log="Sensor added to your dashboard"
+
             return redirect('sensors')
     else:
         form = SensorForm()
-
+    
+    #request.session.set
     return render(request, 'fireapp/add-sensor.html', { 'form': form })
 
 @login_required
@@ -94,22 +111,27 @@ def dashboard_view(request, sensor_id):
     context = {}
     context['sensor_id'] = sensor_id
 
-    options = {"Humedad": 'hum', "Intensidad Luminosa": 'luz', "Sonido": 'sonido', "Temperatura": 'temp', "Ubicación": 'loc'}
-    units = {"Humedad": '[]', "Intensidad Luminosa": '[]', "Sonido": '[dB]', "Temperatura": '[°C]', "Ubicación": ''}
+    options = {"Humedad": 'hum', "Intensidad Luminosa": 'luz', "Sonido": 'sonido', "Temperatura": 'temp'}
+    units = {"Humedad": '[]', "Intensidad Luminosa": '[]', "Sonido": '[dB]', "Temperatura": '[°C]'}
 
-    current_var = options["Temperatura"]
-    current_key = "Temperatura"
+    curr_var_list = request.session.get('plot_vars', ["Temperatura"])
+    
+    request.session['curr_sensor'] = sensor_id
+    request.session.save()
 
     timestart_str = request.session.get('start_time', datetime.now().strftime("%Y%m%d%H%M%S"))
     timeend_str = request.session.get('end_time', datetime.now().strftime("%Y%m%d%H%M%S"))
 
     timestart = datetime.strptime(timestart_str, "%Y%m%d%H%M%S")
     timeend = datetime.strptime(timeend_str, "%Y%m%d%H%M%S")
+    current_var = ""
     
     if request.method == 'POST':
-        if 'setvar' in request.POST:
-            current_key = request.POST.get('setvar')
-            current_var = options[current_key]
+        curr_var_list = request.POST.getlist('plot-var', ["Temperatura"])
+        request.session['plot_vars'] = curr_var_list
+        request.session.save()
+        if 'map' in request.POST:
+            current_var = 'loc'
         elif 'update' in request.POST:
             startd = datetime.strptime(request.POST.get('start_date'), "%Y-%m-%d").date()
             endd = datetime.strptime(request.POST.get('end_date'), "%Y-%m-%d").date()
@@ -132,23 +154,28 @@ def dashboard_view(request, sensor_id):
     query = ref.order_by_key().start_at(timestart).end_at(timeend)
     sensor_data = query.get()
     sensor_data = [sensor_data[k] for k in sensor_data.keys()]
+    if sensor_data != []:
+        if current_var == "loc":
+            df = pd.DataFrame(sensor_data)
+            fig = px.scatter_geo(df, lat='lat', lon='lng', hover_name='altura', title='Sensor Map', projection='natural earth')
 
-    if current_var == "loc":
-        df = pd.DataFrame(sensor_data)
-        fig = px.scatter_geo(df, lat='lat', lon='lng', hover_name='tiempo', title='Sensor Map', projection='natural earth')
+        else:
+            tiempo = [datetime.strptime(entry['fecha'] + entry['tiempo'], "%d/%m/%Y%H:%M:%S") for entry in sensor_data]
+            df = pd.DataFrame(sensor_data)
+            df = df.drop(['altura', 'lat', 'lng', 'fecha', 'tiempo'], axis=1)
+            df.rename(columns={v: k+" "+units[k] for k, v in options.items()}, inplace=True)
+            df.insert(0, "Tiempo", tiempo)
 
+            # Plotly
+            fig = px.scatter(df, x='Tiempo', y=[var+" "+units[var] for var in curr_var_list], title=sensor_id)
+        plot_json = fig.to_json()
+        context['plot_json'] = plot_json
+        context['sensor_status'] = "True"
     else:
-        tiempo = [datetime.strptime(entry['fecha'] + entry['tiempo'], "%d/%m/%Y%H:%M:%S") for entry in sensor_data]
-        df = pd.DataFrame({'Tiempo': tiempo, current_key+" "+units[current_key]: [entry[current_var] for entry in sensor_data]})
-
-        # Plotly
-        fig = px.scatter(df, x='Tiempo', y=current_key+" "+units[current_key], title=sensor_id)
+        context['sensor_status'] = "False"
 
     context['vars_list'] = list(options.keys())
-
-
-    plot_json = fig.to_json()
-    context['plot_json'] = plot_json
+    context['sel_vars'] = curr_var_list
 
     return render(request, 'fireapp/dashboard.html', context)
 
@@ -157,3 +184,39 @@ def logout_view(request):
     next_url = request.POST.get('next') or request.GET.get('next') or 'landing-home'
     return redirect(next_url)
 
+def download_csv(request):
+    sensor_id = request.session.get('curr_sensor')
+    ref = db.reference("/sensors/" + sensor_id + "/data")
+    options = {"Humedad": 'hum', "Intensidad Luminosa": 'luz', "Sonido": 'sonido', "Temperatura": 'temp'}
+    units = {"Humedad": '[]', "Intensidad Luminosa": '[]', "Sonido": '[dB]', "Temperatura": '[°C]'}
+    curr_var_list = request.session.get('plot_vars', list(options.keys()))
+    
+    timestart_str = request.session.get('start_time', datetime.now().strftime("%Y%m%d%H%M%S"))
+    timeend_str = request.session.get('end_time', datetime.now().strftime("%Y%m%d%H%M%S"))
+
+    timestart = datetime.strptime(timestart_str, "%Y%m%d%H%M%S")
+    timeend = datetime.strptime(timeend_str, "%Y%m%d%H%M%S")
+
+    timestart = timestart.strftime("%Y%m%d%H%M%S")
+    timeend = timeend.strftime("%Y%m%d%H%M%S")
+    
+    query = ref.order_by_key().start_at(timestart).end_at(timeend)
+    sensor_data = query.get()
+    sensor_data = [sensor_data[k] for k in sensor_data.keys()]
+    
+    tiempo = [datetime.strptime(entry['fecha'] + entry['tiempo'], "%d/%m/%Y%H:%M:%S") for entry in sensor_data]
+    df = pd.DataFrame(sensor_data)
+    df = df.drop(['altura', 'lat', 'lng', 'fecha', 'tiempo'], axis=1)
+    df.rename(columns={v: k+" "+units[k] for k, v in options.items()}, inplace=True)
+    df.insert(0, "Tiempo", tiempo)
+
+    if sensor_data != []:
+        for k, v in options.items():
+            if k not in curr_var_list:
+                df = df.drop(columns=[k+" "+units[k]], axis=1)
+    else:
+        return HttpResponse("Data not found", status=404)
+
+    csv_data = df.to_csv(index=False)
+    response = HttpResponse(csv_data, content_type='text/csv')
+    return response

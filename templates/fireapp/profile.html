@@ -1,8 +1,12 @@
 {% extends 'fireapp/base.html' %}
+{% load static %}
 
 {% block content %}
 
 <h1> Profile Page </h1>
 <h2> User: {{ user.username }} </h2>
+<div id="profile_picutre" style="width: 100%; height: 500px;">
+    <img src="{% static "img/userProfile/default.png" %}" alt="Profile picture">
+</div>
 
 {% endblock content %}
