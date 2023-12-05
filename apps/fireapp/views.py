@@ -3,7 +3,7 @@ from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth.decorators import login_required
-from .models import Sensor
+from .models import Sensor, ExtendedUser
 from .forms import SignUpForm, SensorForm
 
 import plotly.express as px
@@ -53,7 +53,35 @@ def home(request):
 
 @login_required
 def profile_view(request):
-    return render(request, 'fireapp/profile.html')
+    context = {}
+    user = request.user
+    userextension = ExtendedUser.objects.get(user=user)
+    context['user_extension'] = userextension
+    
+    if request.method == 'POST':
+        title = request.POST.get('userTitle')
+        firstName = request.POST.get('userFirstName')
+        lastName = request.POST.get('userLastName')
+        bio = request.POST.get('userBio')
+        
+        if title != "" and title != None:
+            userextension.title = title
+
+        if firstName != "" and firstName != None:
+            user.first_name = firstName
+
+        if lastName != "" and lastName != None:
+            user.last_name = lastName
+
+        if bio != "" and bio != None:
+            userextension.bio = bio
+
+        if (firstName != "" and firstName != None) or (lastName != "" and lastName != None):
+            user.save()
+        if (title != "" and title != None) or (bio != "" and bio != None):
+            userextension.save()
+    
+    return render(request, 'fireapp/profile.html', context)
 
 @login_required
 def settings_view(request):
@@ -87,11 +115,11 @@ def add_sensor_view(request):
         if form.is_valid():
             sensor = form.save(commit=False)
 
-            sensor_online = ref.get(str(sensor.sensor_id))
-            if ref.get(str(sensor.sensor_id)) is None:
+            sensor_list = ref.order_by_key().get()
+            if sensor.sensor_id not in sensor_list:
                 saes_err = "Sensor ID not found"
             else:
-                if sensor_online.get('user') != currentUser:
+                if sensor_list[sensor.sensor_id].get('user') != currentUser.username:
                     saes_err = "Sensor User does not match"
                 else:
                     sensor.user = request.user
@@ -105,8 +133,10 @@ def add_sensor_view(request):
     #request.session.set
     return render(request, 'fireapp/add-sensor.html', { 'form': form })
 
-@login_required
 def dashboard_view(request, sensor_id):
+    meta = db.reference("/sensors/").order_by_key().get()[sensor_id] 
+    if meta.get('private') and meta.get('user') != request.user.username:
+        return HttpResponse("Data not found", status=404)
     ref = db.reference("/sensors/" + sensor_id + "/data")
     context = {}
     context['sensor_id'] = sensor_id

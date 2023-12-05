@@ -15,3 +15,11 @@ class Sensor(models.Model):
     def __str__(self):
         return self.name
 
+class ExtendedUser(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    bio = models.TextField(null=True, blank=True)
+    title = models.CharField(max_length=25, null=True, blank=True)
+    profile_picture = models.ImageField(upload_to="static/img/userProfile/", null=True, blank=True)
+    
+    def __str__(self):
+        return self.user.username
